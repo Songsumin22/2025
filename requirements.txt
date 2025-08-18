@@ -1,4 +1,2 @@
-json
-re
+streamlit>=1.24
 requests
-Dict, List, Tuple
