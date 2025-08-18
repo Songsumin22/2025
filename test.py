@@ -3,10 +3,6 @@
 Streamlit App: Book → Matching Music Playlists (Enhanced)
 
 📚→🎶 사용자가 책을 입력하면 분위기에 맞는 음악 플레이리스트(YouTube/Spotify)를 추천합니다.
-
-개선 사항
-- 더 다양한 플레이리스트와 키워드 추가
-- 도서 제목 입력 시 Open Library API로 표지 자동 탐색 강화
 """
 
 import json
@@ -36,37 +32,33 @@ CUSTOM_CSS = """
 """
 st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
 
-# ---------- 유틸 ----------
-def norm_text(t: str) -> str:
-    return re.sub(r"\s+", " ", t or "").strip().lower()
-
-# ---------- 플레이리스트 카탈로그 확장 ----------
+# ---------- 플레이리스트 카탈로그 ----------
 PLAYLISTS = {
-    "calm_focus": {"name": "Lo-Fi Beats for Deep Focus","platform": "youtube","url": "https://www.youtube.com/embed/jfKfPfyJRdk","tags": ["lofi", "focus", "calm"]},
-    "epic_adventure": {"name": "Epic Orchestral Adventure","platform": "youtube","url": "https://www.youtube.com/embed/2H5z2I_LQqE","tags": ["orchestra", "epic", "fantasy"]},
-    "cozy_romance": {"name": "Cozy Romance: Piano & Jazz","platform": "youtube","url": "https://www.youtube.com/embed/DWcJFNfaw9c","tags": ["romance", "piano", "jazz"]},
-    "mystery_noir": {"name": "Mystery & Noir Ambience","platform": "youtube","url": "https://www.youtube.com/embed/dA1J9Z8PZQA","tags": ["mystery", "noir", "ambient"]},
-    "sci_synthwave": {"name": "Synthwave for Sci‑Fi","platform": "youtube","url": "https://www.youtube.com/embed/MqpsxFpkd9g","tags": ["synthwave", "sci-fi", "electronic"]},
-    "historical_classical": {"name": "Baroque & Classical Study","platform": "youtube","url": "https://www.youtube.com/embed/GRxofEmo3HA","tags": ["classical", "baroque", "study"]},
-    "selfhelp_productivity": {"name": "Productive Study Beats","platform": "spotify","url": "https://open.spotify.com/embed/playlist/37i9dQZF1DX8Uebhn9wzrS","tags": ["beats", "productivity", "study"]},
-    "nature_ambient": {"name": "Ambient / Rain for Reading","platform": "youtube","url": "https://www.youtube.com/embed/lE6RYpe9IT0","tags": ["ambient", "rain", "calm"]},
-    "thriller_dark": {"name": "Dark Thriller Soundtracks","platform": "youtube","url": "https://www.youtube.com/embed/I0ZpJbmrYRU","tags": ["thriller", "dark", "suspense"]},
-    "happy_uplift": {"name": "Happy & Uplifting Pop Mix","platform": "youtube","url": "https://www.youtube.com/embed/K4DyBUG242c","tags": ["happy", "pop", "uplift"]},
-    "philosophy_ambient": {"name": "Philosophical Ambient Soundscape","platform": "youtube","url": "https://www.youtube.com/embed/qsZlL8kV7gI","tags": ["philosophy", "ambient", "deep"]},
+    "calm_focus": {"name": "Lo-Fi Beats for Deep Focus","platform": "youtube","url": "https://www.youtube.com/embed/jfKfPfyJRdk","tags": ["lofi","focus","calm"]},
+    "epic_adventure": {"name": "Epic Orchestral Adventure","platform": "youtube","url": "https://www.youtube.com/embed/2H5z2I_LQqE","tags": ["orchestra","epic","fantasy"]},
+    "cozy_romance": {"name": "Cozy Romance: Piano & Jazz","platform": "youtube","url": "https://www.youtube.com/embed/DWcJFNfaw9c","tags": ["romance","piano","jazz"]},
+    "mystery_noir": {"name": "Mystery & Noir Ambience","platform": "youtube","url": "https://www.youtube.com/embed/dA1J9Z8PZQA","tags": ["mystery","noir","ambient"]},
+    "sci_synthwave": {"name": "Synthwave for Sci-Fi","platform": "youtube","url": "https://www.youtube.com/embed/MqpsxFpkd9g","tags": ["synthwave","sci-fi","electronic"]},
+    "historical_classical": {"name": "Baroque & Classical Study","platform": "youtube","url": "https://www.youtube.com/embed/GRxofEmo3HA","tags": ["classical","baroque","study"]},
+    "selfhelp_productivity": {"name": "Productive Study Beats","platform": "spotify","url": "https://open.spotify.com/embed/playlist/37i9dQZF1DX8Uebhn9wzrS","tags": ["beats","productivity","study"]},
+    "nature_ambient": {"name": "Ambient / Rain for Reading","platform": "youtube","url": "https://www.youtube.com/embed/lE6RYpe9IT0","tags": ["ambient","rain","calm"]},
+    "thriller_dark": {"name": "Dark Thriller Soundtracks","platform": "youtube","url": "https://www.youtube.com/embed/I0ZpJbmrYRU","tags": ["thriller","dark","suspense"]},
+    "happy_uplift": {"name": "Happy & Uplifting Pop Mix","platform": "youtube","url": "https://www.youtube.com/embed/K4DyBUG242c","tags": ["happy","pop","uplift"]},
+    "philosophy_ambient": {"name": "Philosophical Ambient Soundscape","platform": "youtube","url": "https://www.youtube.com/embed/qsZlL8kV7gI","tags": ["philosophy","ambient","deep"]},
 }
 
-# ---------- 장르/키워드 확장 ----------
+# ---------- 장르/키워드 ----------
 MOOD_RULES = [
-    ("fantasy", ["fantasy", "마법", "모험", "용", "왕좌", "엘프", "드래곤"], "epic_adventure"),
-    ("romance", ["romance", "사랑", "연애", "로맨스", "청춘"], "cozy_romance"),
-    ("mystery", ["mystery", "미스터리", "추리", "스릴러", "범죄", "noir"], "mystery_noir"),
-    ("science fiction", ["sf", "sci-fi", "공상", "우주", "사이버", "디스토피아", "로봇"], "sci_synthwave"),
-    ("historical", ["역사", "고전", "근대", "중세", "왕조", "삼국"], "historical_classical"),
-    ("self-help", ["자기계발", "습관", "생산성", "공부법", "멘탈", "성장"], "selfhelp_productivity"),
-    ("calm", ["에세이", "수필", "명상", "휴식", "치유"], "nature_ambient"),
-    ("thriller", ["스릴러", "범죄", "서스펜스", "공포"], "thriller_dark"),
-    ("happy", ["행복", "웃음", "희망", "기쁨"], "happy_uplift"),
-    ("philosophy", ["철학", "사유", "존재", "의미"], "philosophy_ambient"),
+    ("fantasy", ["fantasy","마법","모험","용","왕좌","엘프","드래곤"], "epic_adventure"),
+    ("romance", ["romance","사랑","연애","로맨스","청춘"], "cozy_romance"),
+    ("mystery", ["mystery","미스터리","추리","스릴러","범죄","noir"], "mystery_noir"),
+    ("science fiction", ["sf","sci-fi","공상","우주","사이버","디스토피아","로봇"], "sci_synthwave"),
+    ("historical", ["역사","고전","근대","중세","왕조","삼국"], "historical_classical"),
+    ("self-help", ["자기계발","습관","생산성","공부법","멘탈","성장"], "selfhelp_productivity"),
+    ("calm", ["에세이","수필","명상","휴식","치유"], "nature_ambient"),
+    ("thriller", ["스릴러","범죄","서스펜스","공포"], "thriller_dark"),
+    ("happy", ["행복","웃음","희망","기쁨"], "happy_uplift"),
+    ("philosophy", ["철학","사유","존재","의미"], "philosophy_ambient"),
 ]
 
 DEFAULT_MOOD = "calm_focus"
@@ -79,8 +71,7 @@ OL_COVER = "https://covers.openlibrary.org/b/id/{bid}-L.jpg"
 def fetch_openlibrary(title: str, author: str = "") -> Dict:
     try:
         params = {"title": title}
-        if author:
-            params["author"] = author
+        if author: params["author"] = author
         r = requests.get(OL_SEARCH, params=params, timeout=10)
         r.raise_for_status()
         data = r.json()
@@ -120,5 +111,37 @@ def infer_moods(title: str, subjects: List[str], extra_tags: List[str]) -> List[
     top = [(k, "; ".join(reasons[k]) or "일반 독서에 적합") for k, _ in ranked[:3]]
     return top
 
-# 이하 부분은 동일 (UI 구성 및 추천 출력)
-# ...
+# ---------- UI ----------
+st.title("📚→🎶 도서 기반 음악 플레이리스트 추천")
+
+title = st.text_input("도서 제목", placeholder="예: Demian, Harry Potter")
+author = st.text_input("저자 (선택)")
+
+extra_tags = st.multiselect("추가 키워드", ["판타지","로맨스","미스터리","스릴러","SF","역사","에세이","자기계발","명상","철학","청춘","모험","고전"], default=[])
+
+if title:
+    with st.spinner("도서 정보를 불러오는 중..."):
+        book = fetch_openlibrary(title, author)
+
+    st.subheader("📖 도서 정보")
+    col1, col2 = st.columns([0.3,0.7])
+    with col1:
+        if book["cover_url"]:
+            st.image(book["cover_url"], use_column_width=True)
+        else:
+            st.image("https://placehold.co/400x600?text=No+Cover", use_column_width=True)
+    with col2:
+        st.write("**제목:**", book["title"])
+        st.write("**저자:**", book["author"])
+        st.write("**설명:**", book["description"] if book["description"] else "설명이 없습니다.")
+
+    st.subheader("🎶 추천 플레이리스트")
+    candidates = infer_moods(book["title"], book["subjects"], extra_tags)
+    for mood_key, reason in candidates:
+        pl = PLAYLISTS[mood_key]
+        st.markdown(f"### {pl['name']}")
+        st.caption(f"플랫폼: {pl['platform'].title()} | 이유: {reason}")
+        if pl["platform"] == "youtube":
+            st.video(pl["url"])
+        elif pl["platform"] == "spotify":
+            st.components.v1.iframe(pl["url"], height=352)
