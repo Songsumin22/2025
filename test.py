@@ -1,7 +1,3 @@
-# -*- coding: utf-8 -*-
-"""
-Streamlit App: Book → Matching Music Playlists (Enhanced)
-
 📚→🎶 사용자가 책을 입력하면 분위기에 맞는 음악 플레이리스트(YouTube/Spotify)를 추천합니다.
 
 개선 사항
