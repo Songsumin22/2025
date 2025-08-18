@@ -1,9 +1,3 @@
-📚→🎶 사용자가 책을 입력하면 분위기에 맞는 음악 플레이리스트(YouTube/Spotify)를 추천합니다.
-
-개선 사항
-- 더 다양한 플레이리스트와 키워드 추가
-- 도서 제목 입력 시 Open Library API로 표지 자동 탐색 강화
-"""
 
 import json
 import re
