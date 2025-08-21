@@ -4,6 +4,7 @@ import pandas as pd
 import numpy as np
 from datetime import date, timedelta
 import plotly.express as px
+import itertools
 
 st.set_page_config(page_title="시험공부 플래너", page_icon="📘", layout="wide")
 
@@ -16,27 +17,27 @@ def round_to_step(x, step):
     return np.round(x / step) * step
 
 def is_weekend(d: date):
-    return d.weekday() >= 5  # 5=토, 6=일
+    return d.weekday() >= 5  # 5=토,6=일
 
 def make_default_subjects():
     return pd.DataFrame({
-        "Subject": ["국어", "영어", "수학"],
-        "TargetMinutes": [300, 420, 600],  # 목표 시간 분 단위
-        "Priority(1-5)": [3, 4, 5],
-        "MinSession(min)": [30, 30, 30],   # 최소 세션 분 단위
+        "Subject": ["국어","영어","수학"],
+        "TargetMinutes":[300,420,600],
+        "Priority(1-5)":[3,4,5],
+        "MinSession(min)":[30,30,30],
     })
 
-# ---------- 사이드바 입력 ----------
+# ---------- 사이드바 ----------
 with st.sidebar:
     st.title("⚙️ 설정")
     today = date.today()
-    exam_date = st.date_input("시험 날짜", value=today + timedelta(days=14), min_value=today)
-    daily_hours = st.slider("하루 공부 가능 시간(평일, 시간)", min_value=1.0, max_value=12.0, value=4.0, step=0.5)
-    daily_minutes = daily_hours * 60
-    weekend_factor = st.slider("주말 가중치", 0.0, 2.0, 1.2, 0.1)
+    exam_date = st.date_input("시험 날짜", value=today+timedelta(days=14), min_value=today)
+    daily_hours = st.slider("하루 공부 가능 시간(평일, 시간)",1.0,12.0,4.0,0.5)
+    daily_minutes = daily_hours*60
+    weekend_factor = st.slider("주말 가중치",0.0,2.0,1.2,0.1)
     min_step = st.select_slider("시간 배분 최소 단위(분)", options=[5,10,15,30], value=5)
     days_off = st.multiselect("반복 휴식 요일(매주)", options=["월","화","수","목","금","토","일"])
-
+    
     st.markdown("---")
     st.caption("과목/목표시간 입력(빈 TargetMinutes는 우선순위로 자동 배분)")
     subjects_df = st.data_editor(
@@ -47,12 +48,12 @@ with st.sidebar:
         column_config={
             "Subject": st.column_config.TextColumn("과목"),
             "TargetMinutes": st.column_config.NumberColumn("목표시간(분)", step=5),
-            "Priority(1-5)": st.column_config.NumberColumn("우선순위(1-5)", min_value=1, max_value=5, step=1),
+            "Priority(1-5)": st.column_config.NumberColumn("우선순위(1-5)", min_value=1,max_value=5,step=1),
             "MinSession(min)": st.column_config.NumberColumn("최소 세션(분)", step=5),
         }
     )
     st.markdown("---")
-    seed = st.number_input("무작위 분배 시드", min_value=0, value=42, step=1)
+    seed = st.number_input("무작위 분배 시드", min_value=0,value=42,step=1)
     generate_btn = st.button("🪄 계획 생성/재계산")
 
 # ---------- 데이터 전처리 ----------
@@ -78,7 +79,7 @@ weekday_map = {0:"월",1:"화",2:"수",3:"목",4:"금",5:"토",6:"일"}
 days_off_idx = {k for k,v in weekday_map.items() if v in days_off}
 
 calendar = []
-for d in daterange(today, exam_date):
+for d in daterange(today,exam_date):
     if d.weekday() in days_off_idx:
         avail = 0
     else:
@@ -89,7 +90,7 @@ for d in daterange(today, exam_date):
     avail = round_to_step(max(avail,0), min_step)
     calendar.append({"Date":d, "AvailMinutes":float(avail), "Weekday":weekday_map[d.weekday()]})
 cal_df = pd.DataFrame(calendar)
-if cal_df["AvailMinutes"].sum() == 0:
+if cal_df["AvailMinutes"].sum()==0:
     st.error("가용 시간이 0입니다. 설정을 조정하세요.")
     st.stop()
 
@@ -114,6 +115,16 @@ if subjects.empty:
     st.success("모든 과목을 완료했습니다! 🎉")
     st.stop()
 
+# ---------- 과목 전환 효율 정의 ----------
+subjects_list = subjects["Subject"].tolist()
+transition_matrix = {}
+for s1 in subjects_list:
+    for s2 in subjects_list:
+        if s1==s2:
+            transition_matrix[(s1,s2)] = 1.0
+        else:
+            transition_matrix[(s1,s2)] = 0.9  # 단순 예시, 필요시 사용자 정의 가능
+
 # ---------- 스케줄링 ----------
 np.random.seed(seed)
 plan_rows = []
@@ -128,8 +139,9 @@ for _, row in cal_df.iterrows():
     def remaining_total():
         return sum(v["TargetMinutes"] for v in remaining.values())
 
-    subject_order = list(remaining.keys())
-    np.random.shuffle(subject_order)
+    # 과목 선택 + 효율 고려
+    subject_order = sorted(remaining.keys(), key=lambda s: remaining[s]["TargetMinutes"], reverse=True)
+    daily_plan = []
 
     safety = 0
     while capacity>0 and remaining_total()>0 and safety<1000:
@@ -137,24 +149,30 @@ for _, row in cal_df.iterrows():
         total_rem = remaining_total()
         if total_rem==0:
             break
+        avg_min = np.mean([remaining[s]["MinSession(min)"] for s in subject_order if remaining[s]["TargetMinutes"]>0])
+        round_chunk = min(capacity, max(min_step, avg_min))
 
-        avg_min = np.mean([remaining[s]["MinSession(min)"] for s in subject_order if remaining[s]["TargetMinutes"]>0]) if subject_order else min_step
-        round_chunk = min(capacity,max(min_step, avg_min))
+        # 순서 최적화: 효율 최대화 (단순 greedy)
+        best_eff = 0
+        best_s = None
+        for s in subject_order:
+            if remaining[s]["TargetMinutes"]<=0: continue
+            prev_s = daily_plan[-1]["Subject"] if daily_plan else s
+            eff = transition_matrix.get((prev_s,s),0.8)
+            if eff>best_eff:
+                best_eff = eff
+                best_s = s
+        if best_s is None: break
 
-        for s in list(subject_order):
-            rem_s = remaining[s]["TargetMinutes"]
-            if rem_s<=0 or capacity<=0:
-                continue
-            share = round_chunk*(rem_s/total_rem)
-            share = max(share, remaining[s]["MinSession(min)"])
-            share = min(share, rem_s, capacity)
-            share = float(round_to_step(share, min_step))
-            if share<=0:
-                continue
-            plan_rows.append({"Date":day, "Subject":s, "Minutes":share})
-            remaining[s]["TargetMinutes"] = float(round_to_step(remaining[s]["TargetMinutes"]-share, min_step))
-            capacity = float(round_to_step(capacity-share, min_step))
-        np.random.shuffle(subject_order)
+        share = round_chunk
+        share = min(share, remaining[best_s]["TargetMinutes"], capacity)
+        share = float(round_to_step(share, min_step))
+        if share<=0: break
+
+        plan_rows.append({"Date":day, "Subject":best_s, "Minutes":share})
+        daily_plan.append({"Subject":best_s})
+        remaining[best_s]["TargetMinutes"] = float(round_to_step(remaining[best_s]["TargetMinutes"]-share, min_step))
+        capacity = float(round_to_step(capacity-share, min_step))
 
 plan_df = pd.DataFrame(plan_rows)
 if plan_df.empty:
@@ -170,8 +188,8 @@ def key_for(row):
     return f"{row['Date']}_{row['Subject']}"
 
 # ---------- 오늘 할 일 ----------
-st.title("📘 시험공부 플래너")
-left, right = st.columns([1.1,1])
+st.title("📘 시험공부 플래너 (순서 최적화 포함)")
+left,right = st.columns([1.1,1])
 
 with left:
     st.subheader("오늘 할 일")
@@ -193,29 +211,27 @@ with left:
     completed = plan_df[plan_df.apply(key_for,axis=1).isin(st.session_state.done)]["Minutes"].sum()
     total = plan_df["Minutes"].sum()
     prog = 0 if total==0 else completed/total
-    st.progress(min(prog,1.0), text=f"전체 진행률: {completed:.0f} / {total:.0f} 분")
+    st.progress(min(prog,1.0), text=f"전체 진행률: {completed:.0f}/{total:.0f}분")
 
     done_subjects_today = set(today_plan[today_plan["Key"].isin(st.session_state.done)]["Subject"].unique())
-    if st.button("✅ 완료 과목 제외 후 남은 계획 재계산"):
+    if st.button("✅ 완료 과목 제외 후 재계산"):
         st.session_state.done_subjects.update(done_subjects_today)
         st.experimental_rerun()
 
 with right:
     st.subheader("요약")
     subj_summary = plan_df.groupby("Subject")["Minutes"].sum().reset_index().sort_values("Minutes",ascending=False)
-    fig_pie = px.pie(subj_summary, names="Subject", values="Minutes", title="과목별 총 공부시간 비율(분)")
+    fig_pie = px.pie(subj_summary,names="Subject",values="Minutes",title="과목별 총 공부시간 비율(분)")
     st.plotly_chart(fig_pie,use_container_width=True)
 
-    daily_subject = plan_df.pivot_table(index="Date", columns="Subject", values="Minutes", aggfunc="sum").fillna(0)
+    daily_subject = plan_df.pivot_table(index="Date",columns="Subject",values="Minutes",aggfunc="sum").fillna(0)
     daily_subject = daily_subject.sort_index()
-    fig_bar = px.bar(daily_subject,title="일자별 과목 스택 바(계획)", barmode="stack")
+    fig_bar = px.bar(daily_subject,title="일자별 과목 스택 바(계획)",barmode="stack")
     st.plotly_chart(fig_bar,use_container_width=True)
 
 st.markdown("---")
-
-# ---------- 상세 표 ----------
 st.subheader("📅 일자별 상세 계획표")
-pivot_table = plan_df.pivot_table(index="Date", columns="Subject", values="Minutes", aggfunc="sum").fillna(0)
+pivot_table = plan_df.pivot_table(index="Date",columns="Subject",values="Minutes",aggfunc="sum").fillna(0)
 pivot_table["Total"] = pivot_table.sum(axis=1)
 pivot_table.index = pivot_table.index.astype(str)
 st.dataframe(pivot_table,use_container_width=True)
