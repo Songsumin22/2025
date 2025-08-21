@@ -2,7 +2,7 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-from datetime import date, datetime, timedelta
+from datetime import date, timedelta
 import plotly.express as px
 
 st.set_page_config(page_title="시험공부 플래너", page_icon="📘", layout="wide")
@@ -32,8 +32,8 @@ with st.sidebar:
     today = date.today()
     exam_date = st.date_input("시험 날짜", value=today + timedelta(days=14), min_value=today)
     daily_hours = st.slider("하루 공부 가능 시간(평일)", min_value=1.0, max_value=12.0, value=4.0, step=0.5)
-    weekend_factor = st.slider("주말 가중치 (ex. 1.5면 주말에 1.5배 공부)", 0.0, 2.0, 1.2, 0.1)
-    min_step = st.select_slider("시간 배분 최소 단위(세션)", options=[0.25, 0.5, 1.0], value=0.5)
+    weekend_factor = st.slider("주말 가중치", 0.0, 2.0, 1.2, 0.1)
+    min_step = st.select_slider("시간 배분 최소 단위", options=[0.25, 0.5, 1.0], value=0.5)
     days_off = st.multiselect(
         "반복 휴식 요일(매주)", options=["월","화","수","목","금","토","일"],
         help="선택한 요일은 매주 공부 제외"
@@ -54,7 +54,7 @@ with st.sidebar:
         }
     )
     st.markdown("---")
-    seed = st.number_input("무작위 분배 시드(재현성)", min_value=0, value=42, step=1)
+    seed = st.number_input("무작위 분배 시드", min_value=0, value=42, step=1)
     generate_btn = st.button("🪄 계획 생성/재계산")
 
 # ---------- 데이터 전처리 ----------
@@ -65,7 +65,7 @@ if subjects_df.empty:
     st.warning("사이드바에서 과목을 입력하세요.")
     st.stop()
 
-# 완료한 과목 제외 처리
+# 완료한 과목 제외
 if "done_subjects" not in st.session_state:
     st.session_state.done_subjects = set()
 
@@ -75,7 +75,6 @@ if subjects_df.empty:
     st.success("모든 과목을 완료했습니다! 🎉")
     st.stop()
 
-# 목표시간이 비어있으면 나중에 우선순위로 배분
 has_target = subjects_df["TargetHours"].fillna(0) > 0
 
 # ---------- 날짜/가용시간 테이블 ----------
@@ -98,7 +97,7 @@ if cal_df["AvailHours"].sum() == 0:
     st.error("가용 시간이 0입니다. 설정을 조정하세요.")
     st.stop()
 
-# ---------- 총 목표시간 확정 ----------
+# ---------- 목표시간 확정 ----------
 subjects = subjects_df.copy()
 auto_mask = ~has_target
 manual_total = subjects.loc[~auto_mask, "TargetHours"].sum()
@@ -184,12 +183,14 @@ left, right = st.columns([1.1, 1])
 
 with left:
     st.subheader("오늘 할 일")
-    today_plan = plan_df[plan_df["Date"] == today]
+    today_plan = plan_df[plan_df["Date"] == today].copy()
+    today_plan["Key"] = today_plan.apply(key_for, axis=1)
+
     if today_plan.empty:
         st.info("오늘은 계획이 없어요. (휴식일이거나 시험일까지 남은 시간이 적을 수 있어요)")
     else:
         for i, r in today_plan.iterrows():
-            k = key_for(r)
+            k = r["Key"]
             checked = k in st.session_state.done
             new_val = st.checkbox(
                 f"{r['Subject']} — {r['Hours']:.2f}시간",
@@ -201,13 +202,11 @@ with left:
             elif not new_val and checked:
                 st.session_state.done.discard(k)
 
-    plan_df["Key"] = plan_df.apply(key_for, axis=1)
-    completed_hours = plan_df[plan_df["Key"].isin(st.session_state.done)]["Hours"].sum()
+    completed_hours = plan_df[plan_df.apply(key_for, axis=1).isin(st.session_state.done)]["Hours"].sum()
     total_hours = plan_df["Hours"].sum()
     prog = 0.0 if total_hours == 0 else completed_hours / total_hours
     st.progress(min(prog,1.0), text=f"전체 진행률: {completed_hours:.2f} / {total_hours:.2f} 시간")
 
-    # ✅ 완료 과목 제외하고 다시 계획 세우기
     done_subjects_today = set(today_plan[today_plan["Key"].isin(st.session_state.done)]["Subject"].unique())
     if st.button("✅ 완료 과목 제외 후 남은 계획 재계산"):
         st.session_state.done_subjects.update(done_subjects_today)
@@ -219,24 +218,4 @@ with right:
     fig_pie = px.pie(subj_summary, names="Subject", values="Hours", title="과목별 총 공부시간 비율")
     st.plotly_chart(fig_pie, use_container_width=True)
 
-    daily_subject = plan_df.pivot_table(index="Date", columns="Subject", values="Hours", aggfunc="sum").fillna(0.0)
-    daily_subject = daily_subject.sort_index()
-    fig_bar = px.bar(daily_subject, title="일자별 과목 스택 바(계획)", barmode="stack")
-    st.plotly_chart(fig_bar, use_container_width=True)
-
-st.markdown("---")
-
-# ---------- 상세 표 ----------
-st.subheader("📅 일자별 상세 계획표")
-pivot_table = plan_df.pivot_table(index="Date", columns="Subject", values="Hours", aggfunc="sum").fillna(0.0)
-pivot_table["Total"] = pivot_table.sum(axis=1)
-pivot_table = pivot_table.sort_index()
-pivot_table.index = pivot_table.index.astype(str)
-
-st.dataframe(pivot_table, use_container_width=True)
-
-csv = pivot_table.to_csv(index=True).encode("utf-8-sig")
-st.download_button("⬇️ 계획 CSV 다운로드", data=csv, file_name="study_plan.csv", mime="text/csv")
-
-if generate_btn:
-    st.experimental_rerun()
+    daily_subject = plan
