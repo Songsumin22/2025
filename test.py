@@ -187,7 +187,7 @@ with left:
     today_plan["Key"] = today_plan.apply(key_for, axis=1)
 
     if today_plan.empty:
-        st.info("오늘은 계획이 없어요. (휴식일이거나 시험일까지 남은 시간이 적을 수 있어요)")
+        st.info("오늘은 계획이 없어요.")
     else:
         for i, r in today_plan.iterrows():
             k = r["Key"]
@@ -218,4 +218,22 @@ with right:
     fig_pie = px.pie(subj_summary, names="Subject", values="Hours", title="과목별 총 공부시간 비율")
     st.plotly_chart(fig_pie, use_container_width=True)
 
-    daily_subject = plan
+    daily_subject = plan_df.pivot_table(index="Date", columns="Subject", values="Hours", aggfunc="sum").fillna(0.0)
+    daily_subject = daily_subject.sort_index()
+    fig_bar = px.bar(daily_subject, title="일자별 과목 스택 바(계획)", barmode="stack")
+    st.plotly_chart(fig_bar, use_container_width=True)
+
+st.markdown("---")
+
+# ---------- 상세 표 ----------
+st.subheader("📅 일자별 상세 계획표")
+pivot_table = plan_df.pivot_table(index="Date", columns="Subject", values="Hours", aggfunc="sum").fillna(0.0)
+pivot_table["Total"] = pivot_table.sum(axis=1)
+pivot_table.index = pivot_table.index.astype(str)
+st.dataframe(pivot_table, use_container_width=True)
+
+csv = pivot_table.to_csv(index=True).encode("utf-8-sig")
+st.download_button("⬇️ 계획 CSV 다운로드", data=csv, file_name="study_plan.csv", mime="text/csv")
+
+if generate_btn:
+    st.experimental_rerun()
