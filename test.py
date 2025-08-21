@@ -55,7 +55,7 @@ with st.sidebar:
     )
     st.markdown("---")
     seed = st.number_input("무작위 분배 시드(재현성)", min_value=0, value=42, step=1)
-    generate_btn = st.button("🪄 계획 생성/재생성")
+    generate_btn = st.button("🪄 계획 생성/재계산")
 
 # ---------- 데이터 전처리 ----------
 subjects_df = subjects_df.dropna(subset=["Subject"]).copy()
@@ -63,6 +63,16 @@ subjects_df["Subject"] = subjects_df["Subject"].str.strip()
 subjects_df = subjects_df[subjects_df["Subject"] != ""]
 if subjects_df.empty:
     st.warning("사이드바에서 과목을 입력하세요.")
+    st.stop()
+
+# 완료한 과목 제외 처리
+if "done_subjects" not in st.session_state:
+    st.session_state.done_subjects = set()
+
+subjects_df = subjects_df[~subjects_df["Subject"].isin(st.session_state.done_subjects)]
+
+if subjects_df.empty:
+    st.success("모든 과목을 완료했습니다! 🎉")
     st.stop()
 
 # 목표시간이 비어있으면 나중에 우선순위로 배분
@@ -85,12 +95,11 @@ for d in daterange(today, exam_date):
     calendar.append({"Date": d, "AvailHours": float(avail), "Weekday": weekday_map[d.weekday()]})
 cal_df = pd.DataFrame(calendar)
 if cal_df["AvailHours"].sum() == 0:
-    st.error("가용 시간이 0입니다. 설정을 조정하세요(휴식 요일/주말 가중치/하루 공부 시간).")
+    st.error("가용 시간이 0입니다. 설정을 조정하세요.")
     st.stop()
 
 # ---------- 총 목표시간 확정 ----------
 subjects = subjects_df.copy()
-# 빈 TargetHours는 우선순위 비율로 자동 배분
 auto_mask = ~has_target
 manual_total = subjects.loc[~auto_mask, "TargetHours"].sum()
 remaining_capacity = max(cal_df["AvailHours"].sum() - manual_total, 0.0)
@@ -104,16 +113,13 @@ if auto_mask.any():
         alloc = remaining_capacity * (pr / pr_sum).values
     subjects.loc[auto_mask, "TargetHours"] = alloc
 
-# 최소 세션 단위 반영
 subjects["TargetHours"] = subjects["TargetHours"].astype(float).apply(lambda x: float(round_to_step(max(x,0.0), min_step)))
-
-# 목표가 0인 과목 제거
 subjects = subjects[subjects["TargetHours"] > 0].reset_index(drop=True)
 if subjects.empty:
-    st.error("목표 시간이 0인 과목만 있습니다. TargetHours 또는 우선순위를 설정하세요.")
+    st.success("모든 과목을 완료했습니다! 🎉")
     st.stop()
 
-# ---------- 스케줄링 알고리즘 ----------
+# ---------- 스케줄링 ----------
 np.random.seed(seed)
 plan_rows = []
 remaining = subjects[["Subject","TargetHours","MinSession(hrs)"]].set_index("Subject").to_dict(orient="index")
@@ -165,14 +171,14 @@ if plan_df.empty:
 
 plan_df = plan_df.sort_values(["Date","Subject"]).reset_index(drop=True)
 
-# ---------- 세션 상태(체크박스) ----------
+# ---------- 상태 관리 ----------
 if "done" not in st.session_state:
     st.session_state.done = set()
 
 def key_for(row):
     return f"{row['Date']}_{row['Subject']}"
 
-# 오늘 할 일 뷰
+# ---------- 오늘 할 일 ----------
 st.title("📘 시험공부 플래너")
 left, right = st.columns([1.1, 1])
 
@@ -185,7 +191,6 @@ with left:
         for i, r in today_plan.iterrows():
             k = key_for(r)
             checked = k in st.session_state.done
-            # ✅ 고유 key 보장 위해 i 추가
             new_val = st.checkbox(
                 f"{r['Subject']} — {r['Hours']:.2f}시간",
                 value=checked,
@@ -202,6 +207,12 @@ with left:
     prog = 0.0 if total_hours == 0 else completed_hours / total_hours
     st.progress(min(prog,1.0), text=f"전체 진행률: {completed_hours:.2f} / {total_hours:.2f} 시간")
 
+    # ✅ 완료 과목 제외하고 다시 계획 세우기
+    done_subjects_today = set(today_plan[today_plan["Key"].isin(st.session_state.done)]["Subject"].unique())
+    if st.button("✅ 완료 과목 제외 후 남은 계획 재계산"):
+        st.session_state.done_subjects.update(done_subjects_today)
+        st.experimental_rerun()
+
 with right:
     st.subheader("요약")
     subj_summary = plan_df.groupby("Subject")["Hours"].sum().reset_index().sort_values("Hours", ascending=False)
@@ -215,13 +226,16 @@ with right:
 
 st.markdown("---")
 
-# ---------- 상세 표 & 내보내기 ----------
+# ---------- 상세 표 ----------
 st.subheader("📅 일자별 상세 계획표")
-plan_pretty = plan_df.copy()
-plan_pretty["Date"] = plan_pretty["Date"].astype(str)
-st.dataframe(plan_pretty, use_container_width=True, hide_index=True)
+pivot_table = plan_df.pivot_table(index="Date", columns="Subject", values="Hours", aggfunc="sum").fillna(0.0)
+pivot_table["Total"] = pivot_table.sum(axis=1)
+pivot_table = pivot_table.sort_index()
+pivot_table.index = pivot_table.index.astype(str)
 
-csv = plan_pretty.to_csv(index=False).encode("utf-8-sig")
+st.dataframe(pivot_table, use_container_width=True)
+
+csv = pivot_table.to_csv(index=True).encode("utf-8-sig")
 st.download_button("⬇️ 계획 CSV 다운로드", data=csv, file_name="study_plan.csv", mime="text/csv")
 
 if generate_btn:
