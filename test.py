@@ -4,7 +4,6 @@ import pandas as pd
 import numpy as np
 from datetime import date, timedelta
 import plotly.express as px
-import itertools
 
 st.set_page_config(page_title="시험공부 플래너", page_icon="📘", layout="wide")
 
@@ -17,7 +16,7 @@ def round_to_step(x, step):
     return np.round(x / step) * step
 
 def is_weekend(d: date):
-    return d.weekday() >= 5  # 5=토,6=일
+    return d.weekday() >= 5
 
 def make_default_subjects():
     return pd.DataFrame({
@@ -25,6 +24,8 @@ def make_default_subjects():
         "TargetMinutes":[300,420,600],
         "Priority(1-5)":[3,4,5],
         "MinSession(min)":[30,30,30],
+        "Difficulty":[3,3,3],        # 난이도 1~5
+        "RecoveryTime(min)":[5,5,5], # 전환 회복시간 분 단위
     })
 
 # ---------- 사이드바 ----------
@@ -50,6 +51,8 @@ with st.sidebar:
             "TargetMinutes": st.column_config.NumberColumn("목표시간(분)", step=5),
             "Priority(1-5)": st.column_config.NumberColumn("우선순위(1-5)", min_value=1,max_value=5,step=1),
             "MinSession(min)": st.column_config.NumberColumn("최소 세션(분)", step=5),
+            "Difficulty": st.column_config.NumberColumn("난이도(1~5)", min_value=1,max_value=5,step=1),
+            "RecoveryTime(min)": st.column_config.NumberColumn("전환 회복시간(분)", step=1),
         }
     )
     st.markdown("---")
@@ -115,20 +118,15 @@ if subjects.empty:
     st.success("모든 과목을 완료했습니다! 🎉")
     st.stop()
 
-# ---------- 과목 전환 효율 정의 ----------
-subjects_list = subjects["Subject"].tolist()
-transition_matrix = {}
-for s1 in subjects_list:
-    for s2 in subjects_list:
-        if s1==s2:
-            transition_matrix[(s1,s2)] = 1.0
-        else:
-            transition_matrix[(s1,s2)] = 0.9  # 단순 예시, 필요시 사용자 정의 가능
-
-# ---------- 스케줄링 ----------
+# ---------- 스케줄링 with 난이도 & 회복시간 ----------
 np.random.seed(seed)
 plan_rows = []
-remaining = subjects[["Subject","TargetMinutes","MinSession(min)"]].set_index("Subject").to_dict(orient="index")
+remaining = subjects[["Subject","TargetMinutes","MinSession(min)","Difficulty","RecoveryTime(min)"]].set_index("Subject").to_dict(orient="index")
+
+# 계수
+alpha = 0.05  # 난이도 영향
+beta = 0.05   # 회복시간 영향
+base_eff = 1.0
 
 for _, row in cal_df.iterrows():
     day = row["Date"]
@@ -139,33 +137,30 @@ for _, row in cal_df.iterrows():
     def remaining_total():
         return sum(v["TargetMinutes"] for v in remaining.values())
 
-    # 과목 선택 + 효율 고려
-    subject_order = sorted(remaining.keys(), key=lambda s: remaining[s]["TargetMinutes"], reverse=True)
     daily_plan = []
-
     safety = 0
     while capacity>0 and remaining_total()>0 and safety<1000:
         safety+=1
         total_rem = remaining_total()
-        if total_rem==0:
-            break
-        avg_min = np.mean([remaining[s]["MinSession(min)"] for s in subject_order if remaining[s]["TargetMinutes"]>0])
+        if total_rem==0: break
+        avg_min = np.mean([remaining[s]["MinSession(min)"] for s in remaining if remaining[s]["TargetMinutes"]>0])
         round_chunk = min(capacity, max(min_step, avg_min))
 
-        # 순서 최적화: 효율 최대화 (단순 greedy)
-        best_eff = 0
+        # 효율 계산
+        best_eff = -1
         best_s = None
-        for s in subject_order:
+        for s in remaining:
             if remaining[s]["TargetMinutes"]<=0: continue
             prev_s = daily_plan[-1]["Subject"] if daily_plan else s
-            eff = transition_matrix.get((prev_s,s),0.8)
+            diff = remaining[prev_s]["Difficulty"]
+            recov = remaining[prev_s]["RecoveryTime(min)"]
+            eff = base_eff*(1-alpha*(diff-3))*(1-beta*(recov/10))  # 단순 예시
             if eff>best_eff:
                 best_eff = eff
                 best_s = s
         if best_s is None: break
 
-        share = round_chunk
-        share = min(share, remaining[best_s]["TargetMinutes"], capacity)
+        share = min(round_chunk, remaining[best_s]["TargetMinutes"], capacity)
         share = float(round_to_step(share, min_step))
         if share<=0: break
 
@@ -188,14 +183,13 @@ def key_for(row):
     return f"{row['Date']}_{row['Subject']}"
 
 # ---------- 오늘 할 일 ----------
-st.title("📘 시험공부 플래너 (순서 최적화 포함)")
+st.title("📘 시험공부 플래너 (난이도/회복시간 기반 순서 최적화)")
 left,right = st.columns([1.1,1])
 
 with left:
     st.subheader("오늘 할 일")
     today_plan = plan_df[plan_df["Date"]==today].copy()
     today_plan["Key"] = today_plan.apply(key_for, axis=1)
-
     if today_plan.empty:
         st.info("오늘은 계획이 없어요.")
     else:
@@ -203,11 +197,8 @@ with left:
             k = r["Key"]
             checked = k in st.session_state.done
             new_val = st.checkbox(f"{r['Subject']} — {r['Minutes']:.0f}분", value=checked, key=f"chk_{k}_{i}")
-            if new_val and not checked:
-                st.session_state.done.add(k)
-            elif not new_val and checked:
-                st.session_state.done.discard(k)
-
+            if new_val and not checked: st.session_state.done.add(k)
+            elif not new_val and checked: st.session_state.done.discard(k)
     completed = plan_df[plan_df.apply(key_for,axis=1).isin(st.session_state.done)]["Minutes"].sum()
     total = plan_df["Minutes"].sum()
     prog = 0 if total==0 else completed/total
@@ -223,7 +214,6 @@ with right:
     subj_summary = plan_df.groupby("Subject")["Minutes"].sum().reset_index().sort_values("Minutes",ascending=False)
     fig_pie = px.pie(subj_summary,names="Subject",values="Minutes",title="과목별 총 공부시간 비율(분)")
     st.plotly_chart(fig_pie,use_container_width=True)
-
     daily_subject = plan_df.pivot_table(index="Date",columns="Subject",values="Minutes",aggfunc="sum").fillna(0)
     daily_subject = daily_subject.sort_index()
     fig_bar = px.bar(daily_subject,title="일자별 과목 스택 바(계획)",barmode="stack")
@@ -235,7 +225,6 @@ pivot_table = plan_df.pivot_table(index="Date",columns="Subject",values="Minutes
 pivot_table["Total"] = pivot_table.sum(axis=1)
 pivot_table.index = pivot_table.index.astype(str)
 st.dataframe(pivot_table,use_container_width=True)
-
 csv = pivot_table.to_csv(index=True).encode("utf-8-sig")
 st.download_button("⬇️ 계획 CSV 다운로드", data=csv, file_name="study_plan.csv", mime="text/csv")
 
