@@ -101,19 +101,23 @@ data = {
     "과탐": {
         "물리학": [
             {"책": "자이스토리 물리학1", "설명": "기출문제를 통한 개념 정리와 실전 훈련 가능", "링크": "https://search.shopping.naver.com/search/all?query=자이스토리 물리학1"},
-            {"책": "EBS 수능특강 물리학1", "설명": "EBS 연계 대비 필수 교재", "링크": "https://search.shopping.naver.com/search/all?query=EBS 수능특강 물리학1"}
+            {"책": "EBS 수능특강 물리학1", "설명": "EBS 연계 대비 필수 교재", "링크": "https://search.shopping.naver.com/search/all?query=EBS 수능특강 물리학1"},
+            {"책": "블랙라벨 물리학1", "설명": "고난도 문제 풀이를 통한 상위권 대비 교재", "링크": "https://search.shopping.naver.com/search/all?query=블랙라벨 물리학1"}
         ],
         "화학": [
             {"책": "마더텅 화학1", "설명": "내신과 수능 기출 동시 대비", "링크": "https://search.shopping.naver.com/search/all?query=마더텅 화학1"},
-            {"책": "자이스토리 화학1", "설명": "실전 기출 훈련 가능", "링크": "https://search.shopping.naver.com/search/all?query=자이스토리 화학1"}
+            {"책": "자이스토리 화학1", "설명": "실전 기출 훈련 가능", "링크": "https://search.shopping.naver.com/search/all?query=자이스토리 화학1"},
+            {"책": "완자 화학1", "설명": "체계적인 개념 학습과 문제 적용", "링크": "https://search.shopping.naver.com/search/all?query=완자 화학1"}
         ],
         "생명과학": [
             {"책": "자이스토리 생명과학1", "설명": "개념 + 기출문제 풀이 가능", "링크": "https://search.shopping.naver.com/search/all?query=자이스토리 생명과학1"},
-            {"책": "EBS 수능특강 생명과학1", "설명": "EBS 연계 교재", "링크": "https://search.shopping.naver.com/search/all?query=EBS 수능특강 생명과학1"}
+            {"책": "EBS 수능특강 생명과학1", "설명": "EBS 연계 교재", "링크": "https://search.shopping.naver.com/search/all?query=EBS 수능특강 생명과학1"},
+            {"책": "블랙라벨 생명과학1", "설명": "심화 문제풀이에 특화된 고난도 교재", "링크": "https://search.shopping.naver.com/search/all?query=블랙라벨 생명과학1"}
         ],
         "지구과학": [
             {"책": "자이스토리 지구과학1", "설명": "방대한 기출문제를 통한 완벽 대비", "링크": "https://search.shopping.naver.com/search/all?query=자이스토리 지구과학1"},
-            {"책": "EBS 수능특강 지구과학1", "설명": "EBS 연계 필수 교재", "링크": "https://search.shopping.naver.com/search/all?query=EBS 수능특강 지구과학1"}
+            {"책": "EBS 수능특강 지구과학1", "설명": "EBS 연계 필수 교재", "링크": "https://search.shopping.naver.com/search/all?query=EBS 수능특강 지구과학1"},
+            {"책": "마더텅 지구과학1", "설명": "내신 및 수능 기출 기반 교재", "링크": "https://search.shopping.naver.com/search/all?query=마더텅 지구과학1"}
         ]
     }
 }
