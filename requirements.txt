@@ -3,3 +3,8 @@ requests
 pandas
 numpy
 plotly
+feedparser
+readability-lxml
+beautifulsoup4
+sumy
+python-dateutil
