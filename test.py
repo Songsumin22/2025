@@ -220,4 +220,39 @@ for it in cards:
         with right:
             st.write("**핵심 정보**")
             st.write(f"- 출처: {it['source'] or '알수없음'}")
-            st.write(f"- 게시: {to_kst(it_
+            st.write(f"- 게시: {to_kst(it['published']).strftime('%Y-%m-%d %H:%M')}")
+            st.link_button("기사 열기", it["link"])
+
+        # 다운로드용 레코드 축적
+        export_rows.append({
+            "title": it["title"],
+            "link": it["link"],
+            "source": it["source"],
+            "published_kst": to_kst(it["published"]).strftime('%Y-%m-%d %H:%M'),
+            "summary": " ".join(summary_sents) if summary_sents else it["summary"],
+        })
+
+st.markdown("---")
+
+# --------- 내보내기 ----------
+df_export = pd.DataFrame(export_rows)
+col1, col2 = st.columns([0.5, 0.5])
+with col1:
+    st.write("### 📤 요약 결과 내보내기")
+with col2:
+    csv = df_export.to_csv(index=False).encode("utf-8-sig")
+    st.download_button(
+        "CSV 다운로드",
+        data=csv,
+        file_name="news_summaries.csv",
+        mime="text/csv"
+    )
+
+with st.expander("데이터 미리보기"):
+    st.dataframe(df_export, use_container_width=True)
+
+# --------- 푸터 ----------
+st.caption(
+    "※ 교육용 데모입니다. 일부 사이트는 본문 추출이 제한될 수 있어 RSS 요약으로 대체될 수 있습니다. "
+    "요약은 LexRank(추출 요약)으로 생성됩니다."
+)
