@@ -156,5 +156,25 @@ st.title("🌈 고2 과목&수준별 문제집 추천 🌈")
 subject = st.selectbox("과목을 선택하세요", list(data.keys()))
 
 if subject == "국어":
-    category = st.selectbox("국어 분야를 선택하세요", list(data[subject].keys())[:-2])
-    st.subheader(f"{subject} - {category}
+    category = st.selectbox("국어 분야를 선택하세요", ["문학"])
+    st.subheader(f"{subject} - {category} 추천 문제집")
+    show_cards(data[subject][category])
+    if st.button("학습 루트 보기"):
+        st.success(f"📌 학습 루트: {data[subject]['학습루트']}\n\n💡 루트 이유: {data[subject]['루트이유']}")
+
+elif subject == "영어":
+    grade = st.selectbox("영어 등급을 선택하세요", list(data[subject].keys()))
+    st.subheader(f"{subject} {grade} 추천 문제집")
+    show_cards(data[subject][grade]["문제집"])
+    if st.button("학습 루트 보기"):
+        st.success(f"📌 학습 루트: {data[subject][grade]['학습루트']}\n\n💡 루트 이유: {data[subject][grade]['루트이유']}")
+
+elif subject == "수학":
+    grade = st.selectbox("수학 수준을 선택하세요", list(data[subject].keys()))
+    st.subheader(f"{subject} {grade} 학습 루트")
+    st.success(f"📌 루트: {data[subject][grade]['루트']}\n\n💡 설명: {data[subject][grade]['설명']}")
+
+elif subject == "과탐":
+    category = st.selectbox("과탐 분야를 선택하세요", list(data[subject].keys()))
+    st.subheader(f"{subject} - {category} 추천 문제집")
+    show_cards(data[subject][category])
