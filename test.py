@@ -180,4 +180,7 @@ if st.button("추천 받기"):
     if recommended_books:
         st.subheader(f"{subject} - {grade} 추천 문제집 및 공부 루트")
         for study_route, reason in recommended_books:
-            st.markdown(f
+            st.markdown(f"**📖 공부 루트:** {study_route}")
+            st.write(f"추천 이유: {reason}")
+    else:
+        st.write("추천 문제집이 없습니다. 다른 성적대를 선택해보세요.")
