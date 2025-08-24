@@ -1,114 +1,223 @@
+# app.py
+# 실시간 뉴스 요약 웹 (K-버전)
+# 실행: streamlit run app.py
+
 import streamlit as st
+import feedparser
+import requests
+from urllib.parse import quote, urlparse
+from bs4 import BeautifulSoup
+from readability import Document
+from datetime import datetime, timezone
+from dateutil import tz
+from typing import List, Dict
 import pandas as pd
-import datetime
-import re
 
-st.title("📚 스터디 플래너 생성기")
+# ---- 요약 (Sumy - LexRank) ----
+from sumy.parsers.plaintext import PlainTextParser
+from sumy.nlp.tokenizers import Tokenizer
+from sumy.summarizers.lex_rank import LexRankSummarizer
 
-# 시험 기간 입력
-st.subheader("시험 기간 설정")
-start_date = st.date_input("시험 시작일")
-end_date = st.date_input("시험 종료일")
+# --------- 기본 설정 ----------
+st.set_page_config(
+    page_title="실시간 뉴스 요약 웹",
+    page_icon="🗞️",
+    layout="wide"
+)
 
-# 기본 과목
-st.subheader("과목 및 시험 범위 입력")
-subjects = {"국어": "", "영어": "", "수학": ""}
+KST = tz.gettz("Asia/Seoul")
 
-# 사용자 과목 추가
-extra_subjects = st.text_area("추가 과목 입력 (콤마로 구분, 예: 역사, 과학, 기술가정)")
-if extra_subjects:
-    for sub in [s.strip() for s in extra_subjects.split(",") if s.strip()]:
-        subjects[sub] = ""
+# --------- 유틸 ----------
+def to_kst(dt: datetime) -> datetime:
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(KST)
 
-# 과목별 시험 범위 입력
-for subject in subjects.keys():
-    subjects[subject] = st.text_input(f"{subject} 시험 범위 입력 (예: 1~3단원, 5~7과)")
+def reltime(dt: datetime) -> str:
+    dt = to_kst(dt)
+    delta = datetime.now(KST) - dt
+    s = int(delta.total_seconds())
+    if s < 60: return f"{s}초 전"
+    m = s // 60
+    if m < 60: return f"{m}분 전"
+    h = m // 60
+    if h < 24: return f"{h}시간 전"
+    d = h // 24
+    return f"{d}일 전"
 
-# 평일/주말 순공시간 입력
-st.subheader("공부 가능 시간 입력")
-weekday_time = st.time_input("평일 순공 시간", datetime.time(3, 0))  # 기본 3시간
-weekend_time = st.time_input("주말 순공 시간", datetime.time(6, 0))  # 기본 6시간
+def clean_text(html: str) -> str:
+    soup = BeautifulSoup(html, "html.parser")
+    # 기사 본문에서 스크립트/스타일 제거
+    for tag in soup(["script", "style", "noscript"]):
+        tag.decompose()
+    text = soup.get_text("\n")
+    lines = [ln.strip() for ln in text.splitlines()]
+    text = "\n".join([ln for ln in lines if ln])
+    return text
 
-def time_to_minutes(t: datetime.time) -> int:
-    """시간 -> 분 단위 변환"""
-    return t.hour * 60 + t.minute
+@st.cache_data(show_spinner=False, ttl=300)
+def fetch_article_text(url: str) -> str:
+    """기사 URL에서 본문 추출(readability -> bs4 클린업)"""
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                      "AppleWebKit/537.36 (KHTML, like Gecko) "
+                      "Chrome/118.0 Safari/537.36"
+    }
+    try:
+        res = requests.get(url, headers=headers, timeout=10)
+        res.raise_for_status()
+        doc = Document(res.text)
+        html = doc.summary(html_partial=True)
+        text = clean_text(html)
+        # 만약 뽑힌 본문이 너무 짧으면 전체 페이지에서 추출
+        if len(text) < 400:
+            text = clean_text(res.text)
+        return text
+    except Exception:
+        return ""
 
-weekday_minutes = time_to_minutes(weekday_time)
-weekend_minutes = time_to_minutes(weekend_time)
-
-# 시험 범위 파싱 함수
-def parse_range(range_str):
-    """
-    시험 범위를 숫자 범위로 변환
-    예: "5~7단원" -> [5,6,7]
-        "1~3과"   -> [1,2,3]
-    """
-    numbers = re.findall(r"\d+", range_str)
-    if len(numbers) == 2:
-        start, end = map(int, numbers)
-        return list(range(start, end+1))
-    elif len(numbers) == 1:
-        return [int(numbers[0])]
-    else:
+def lexrank_summary(text: str, n_sentences: int = 3, language: str = "korean") -> List[str]:
+    """언어에 상관없이 대체로 동작(한국어도 OK)하는 LexRank 기반 문장 추출 요약"""
+    if not text or len(text.split()) < 30:
         return []
+    parser = PlainTextParser.from_string(text, Tokenizer(language))
+    summarizer = LexRankSummarizer()
+    sentences = summarizer(parser.document, n_sentences)
+    return [str(s) for s in sentences]
 
-# 계획 생성 버튼
-if st.button("스터디 플래너 생성하기"):
-    if start_date >= end_date:
-        st.error("⚠️ 시험 시작일은 종료일보다 앞서야 합니다.")
+def google_news_rss_url(
+    query: str = "",
+    topic: str = "",
+    lang: str = "ko",
+    country: str = "KR"
+) -> str:
+    base = "https://news.google.com/rss"
+    if query:
+        # 검색 모드
+        return f"{base}/search?q={quote(query)}&hl={lang}&gl={country}&ceid={country}%3A{lang}"
+    # 토픽 모드
+    topic_map = {
+        "헤드라인": "",            # 기본
+        "국제": "WORLD",
+        "한국": "NATION",
+        "비즈니스·경제": "BUSINESS",
+        "과학": "SCIENCE",
+        "기술·IT": "TECHNOLOGY",
+        "엔터테인먼트": "ENTERTAINMENT",
+        "스포츠": "SPORTS",
+        "건강": "HEALTH",
+    }
+    code = topic_map.get(topic, "")
+    if code:
+        return f"{base}/headlines/section/topic/{code}?hl={lang}&gl={country}&ceid={country}%3A{lang}"
     else:
-        # 날짜 생성
-        dates = pd.date_range(start_date, end_date)
-        total_days = len(dates)
+        return f"{base}?hl={lang}&gl={country}&ceid={country}%3A{lang}"
 
-        # 과목별 단원 분해
-        subject_units = {}
-        for subj, rng in subjects.items():
-            units = parse_range(rng)
-            if units:
-                subject_units[subj] = units
+@st.cache_data(show_spinner=False, ttl=120)
+def fetch_feed(url: str) -> List[Dict]:
+    feed = feedparser.parse(url)
+    items = []
+    for e in feed.entries:
+        title = e.get("title", "").strip()
+        link = e.get("link", "")
+        published_dt = None
+        if "published_parsed" in e and e.published_parsed:
+            published_dt = datetime(*e.published_parsed[:6], tzinfo=timezone.utc)
+        elif "updated_parsed" in e and e.updated_parsed:
+            published_dt = datetime(*e.updated_parsed[:6], tzinfo=timezone.utc)
+        summary = BeautifulSoup(e.get("summary", ""), "html.parser").get_text(" ")
+        source = ""
+        if "source" in e and e.source and e.source.get("title"):
+            source = e.source.title
+        elif link:
+            source = urlparse(link).netloc.replace("www.", "")
+        items.append({
+            "title": title,
+            "link": link,
+            "summary": summary.strip(),
+            "source": source,
+            "published": published_dt or datetime.now(timezone.utc),
+        })
+    # 최신순 정렬
+    items.sort(key=lambda x: x["published"], reverse=True)
+    return items
+
+def make_cards(items: List[Dict], max_items: int) -> List[Dict]:
+    return items[:max_items]
+
+# --------- 사이드바 ----------
+with st.sidebar:
+    st.title("🗞️ 실시간 뉴스 요약")
+    mode = st.radio("모드", ["토픽 탐색", "키워드 검색"], horizontal=True)
+    if mode == "토픽 탐색":
+        topic = st.selectbox(
+            "카테고리",
+            ["헤드라인", "한국", "국제", "비즈니스·경제", "기술·IT", "과학", "스포츠", "엔터테인먼트", "건강"],
+            index=0
+        )
+        rss = google_news_rss_url(topic=topic)
+    else:
+        query = st.text_input("검색어 (예: 반도체, 총선, AI 반도체)", value="AI")
+        rss = google_news_rss_url(query=query)
+
+    n_show = st.slider("표시할 기사 개수", min_value=3, max_value=30, value=10, step=1)
+    n_sum = st.slider("요약 문장 수", min_value=2, max_value=7, value=3, step=1)
+
+    st.markdown("---")
+    st.subheader("요약 옵션")
+    bullet_mode = st.checkbox("키 문장 불릿으로 표시", value=True)
+    include_source_snippet = st.checkbox("RSS 요약문도 함께 표시", value=False)
+
+    st.markdown("---")
+    st.caption("⏱️ 데이터는 2~5분 간 캐시됩니다.")
+
+# --------- 헤더 ----------
+st.markdown("## 🗞️ 실시간 뉴스 요약 웹")
+if mode == "토픽 탐색":
+    st.caption(f"카테고리: **{topic}** • 소스: Google News RSS • 타임존: KST")
+else:
+    st.caption(f"검색어: **{query}** • 소스: Google News RSS • 타임존: KST")
+
+# --------- 데이터 로드 ----------
+with st.spinner("뉴스 불러오는 중..."):
+    items = fetch_feed(rss)
+    cards = make_cards(items, n_show)
+
+# --------- TOP 3 하이라이트 ----------
+top3 = cards[:3]
+if top3:
+    st.markdown("### ⭐ 오늘의 TOP 3")
+    cols = st.columns(len(top3))
+    for c, it in zip(cols, top3):
+        with c:
+            st.markdown(f"**[{it['title']}]({it['link']})**")
+            st.caption(f"{it['source']} • {reltime(it['published'])}")
+
+st.markdown("---")
+
+# --------- 본문 & 요약 렌더링 ----------
+export_rows = []
+for it in cards:
+    with st.container(border=True):
+        left, right = st.columns([0.72, 0.28], vertical_alignment="start")
+        with left:
+            st.markdown(f"#### [{it['title']}]({it['link']})")
+            st.caption(f"{it['source']} • {reltime(it['published'])}")
+            # 기사 본문 추출 & 요약
+            with st.spinner("요약 생성 중..."):
+                article_text = fetch_article_text(it["link"])
+                summary_sents = lexrank_summary(article_text, n_sum, language="korean")
+            if summary_sents:
+                if bullet_mode:
+                    st.markdown("\n".join([f"- {s}" for s in summary_sents]))
+                else:
+                    st.write(" ".join(summary_sents))
             else:
-                subject_units[subj] = []
-
-        # 전체 단원 개수
-        all_units = sum(len(u) for u in subject_units.values())
-
-        if all_units == 0:
-            st.error("⚠️ 과목별 시험 범위를 올바르게 입력해주세요. (예: 1~3단원)")
-        else:
-            # 날짜별 계획 분배
-            plan = []
-            unit_list = []
-            for subj, units in subject_units.items():
-                for u in units:
-                    unit_list.append(f"{subj} {u}단원")
-
-            # 날짜별 단원 배정
-            idx = 0
-            for d in dates:
-                day_name = d.strftime("%A")
-                study_minutes = weekend_minutes if day_name in ["Saturday", "Sunday"] else weekday_minutes
-                today_units = []
-
-                # 하루 공부 시간에 따라 몇 개 단원 배정할지 계산 (단순 균등 분배)
-                units_per_day = max(1, round(len(unit_list) / total_days))
-
-                for _ in range(units_per_day):
-                    if idx < len(unit_list):
-                        today_units.append(unit_list[idx])
-                        idx += 1
-
-                plan.append({
-                    "날짜": d.strftime("%Y-%m-%d (%a)"),
-                    "총 공부시간": f"{study_minutes//60}시간 {study_minutes%60}분",
-                    "공부할 내용": ", ".join(today_units) if today_units else "-"
-                })
-
-            df = pd.DataFrame(plan)
-
-            st.subheader("📅 생성된 스터디 플래너")
-            st.dataframe(df)
-
-            # 다운로드 버튼
-            csv = df.to_csv(index=False).encode('utf-8-sig')
-            st.download_button("CSV 파일 다운로드", data=csv, file_name="study_plan.csv", mime="text/csv")
+                st.info("본문을 안정적으로 추출하지 못해 RSS 요약문을 대신 표시합니다.")
+            if include_source_snippet and it["summary"]:
+                with st.expander("원문 RSS 요약 보기"):
+                    st.write(it["summary"])
+        with right:
+            st.write("**핵심 정보**")
+            st.write(f"- 출처: {it['source'] or '알수없음'}")
+            st.write(f"- 게시: {to_kst(it_
