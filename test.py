@@ -4,13 +4,13 @@ import streamlit as st
 # 페이지 설정
 # ===============================
 st.set_page_config(
-    page_title="🌈 고2 과목&수준별 문제집 추천",
+    page_title="🌈 고2 과목&등급별 문제집 추천",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
 # ===============================
-# CSS 스타일 (무지개+화려한 카드 디자인)
+# CSS 스타일 (화려한 카드 디자인)
 # ===============================
 st.markdown(
     """
@@ -54,76 +54,132 @@ st.markdown(
 )
 
 # ===============================
-# 데이터 정의 (문제집 + 링크 포함)
+# 데이터 정의
 # ===============================
 data = {
     "국어": {
-        "문학": [
-            {"책": "매삼문", "설명": "수능 국어를 처음 접하거나 평가원 기출문제를 풀어 보고 싶은 학생분들에게 추천.", "링크": "https://search.shopping.naver.com/search/all?query=매삼문"},
-            {"책": "마더텅 국어 문학", "설명": "국어에 자신이 없지만 스스로 독학하고 싶은 학생에게 적합.", "링크": "https://search.shopping.naver.com/search/all?query=마더텅 국어 문학"},
-            {"책": "빠작 고등 국어 고전 문학", "설명": "부담 없이 자주 나오는 고전문학 학습 가능.", "링크": "https://search.shopping.naver.com/search/all?query=빠작 고등 국어 고전문학"},
-            {"책": "EBS 올림포스 고전/현대 문학", "설명": "내신과 수능을 동시에 준비할 수 있는 교재.", "링크": "https://search.shopping.naver.com/search/all?query=EBS 올림포스 문학"}
+        "상": [
+            {"책": "매삼문", "설명": "평가원 기출 기반, 상위권 문제풀이 적합.", "링크": "https://search.shopping.naver.com/search/all?query=매삼문"},
+            {"책": "마더텅 국어 문학", "설명": "독학 최적화, 해설 충실.", "링크": "https://search.shopping.naver.com/search/all?query=마더텅 국어 문학"},
+            {"책": "빠작 고전문학", "설명": "핵심 고전문학 체계적 정리.", "링크": "https://search.shopping.naver.com/search/all?query=빠작 고전 문학"}
         ],
-        "학습루트": "문학 기초 → 기출문제 풀이 → 심화 작품 분석 → 모의고사 실전 연습",
-        "루트이유": "기초부터 시작해 난이도를 점진적으로 높이며 문학 감각과 문제 해결력을 동시에 향상시킬 수 있습니다."
+        "중": [
+            {"책": "EBS 올림포스 국어", "설명": "내신+기출 연계, 중위권 학습에 적합.", "링크": "https://search.shopping.naver.com/search/all?query=EBS 올림포스 국어"},
+            {"책": "마더텅 국어 문학 기본편", "설명": "기본 개념 이해와 문제풀이 병행.", "링크": "https://search.shopping.naver.com/search/all?query=마더텅 국어 문학 기본편"},
+            {"책": "쎈 국어 문학", "설명": "중위권 반복 학습에 좋음.", "링크": "https://search.shopping.naver.com/search/all?query=쎈 국어 문학"}
+        ],
+        "하": [
+            {"책": "천일문 국어", "설명": "기초 다지기 및 독해 연습.", "링크": "https://search.shopping.naver.com/search/all?query=천일문 국어"},
+            {"책": "EBS 수능특강 국어", "설명": "기초 개념과 유형 학습.", "링크": "https://search.shopping.naver.com/search/all?query=EBS 수능특강 국어"},
+            {"책": "빠작 국어 기초", "설명": "쉬운 문제로 문법/독해 감각 확보.", "링크": "https://search.shopping.naver.com/search/all?query=빠작 국어 기초"}
+        ]
     },
     "영어": {
-        "1~2등급": {
-            "문제집": [
-                {"책": "EBS 수능특강 영어", "설명": "수능과 내신 대비 모두 가능", "링크": "https://search.shopping.naver.com/search/all?query=EBS 수능특강 영어"},
-                {"책": "쎄듀 빈칸 실전편", "설명": "기출 분석과 실전 연습에 최적화", "링크": "https://search.shopping.naver.com/search/all?query=쎄듀 영어"},
-                {"책": "수능영어 절대유형 3142", "설명": "3점 문항 유형 집중 훈련", "링크": "https://search.shopping.naver.com/search/all?query=절대유형 3142"},
-                {"책": "어법끝 ESSENTIAL", "설명": "수능, 내신 고난도 어법 완성", "링크": "https://search.shopping.naver.com/search/all?query=어법끝"}
-            ],
-            "학습루트": "문법 고난도 → 독해 고난도 지문 → 어휘 심화 암기 → 실전 문제 풀이",
-            "루트이유": "상위권은 실수 최소화와 고난도 문제 완벽 해결이 목표."
-        },
-        "3~4등급": {
-            "문제집": [
-                {"책": "자이스토리 영어 독해 기본", "설명": "내신과 모의고사 독해를 동시에 대비", "링크": "https://search.shopping.naver.com/search/all?query=자이스토리 영어 독해"},
-                {"책": "EBS 올림포스 영어 독해", "설명": "내신 대비에 강력 추천", "링크": "https://search.shopping.naver.com/search/all?query=올림포스 영어"},
-                {"책": "능률 보카 어원편", "설명": "기본 어휘력 확충", "링크": "https://search.shopping.naver.com/search/all?query=능률 보카 어원편"}
-            ],
-            "학습루트": "어휘 기본 암기 → 독해 기초 훈련 → 문법 정리 → 기출 독해 풀이",
-            "루트이유": "영어 독해 기본기와 어휘력을 빠르게 끌어올려야 성적 향상이 가능합니다."
-        }
+        "상": [
+            {"책": "EBS 수능특강 영어", "설명": "상위권 독해 및 연계 대비.", "링크": "https://search.shopping.naver.com/search/all?query=EBS 수능특강 영어"},
+            {"책": "쎄듀 빈칸 실전편", "설명": "킬러 문항 집중 연습.", "링크": "https://search.shopping.naver.com/search/all?query=쎄듀 영어"},
+            {"책": "어법끝 ESSENTIAL", "설명": "상위권 어법 완성.", "링크": "https://search.shopping.naver.com/search/all?query=어법끝"}
+        ],
+        "중": [
+            {"책": "파워업 독해실전", "설명": "중위권 독해 실력 향상.", "링크": "https://search.shopping.naver.com/search/all?query=파워업 독해실전"},
+            {"책": "천일문 핵심", "설명": "문장 구조+독해 병행.", "링크": "https://search.shopping.naver.com/search/all?query=천일문 핵심"},
+            {"책": "어휘끝 수능", "설명": "중급 어휘 학습.", "링크": "https://search.shopping.naver.com/search/all?query=어휘끝 수능"}
+        ],
+        "하": [
+            {"책": "어법끝 START", "설명": "기초 문법 다지기.", "링크": "https://search.shopping.naver.com/search/all?query=어법끝 START"},
+            {"책": "파워업 독해유형", "설명": "쉬운 독해 문제 반복.", "링크": "https://search.shopping.naver.com/search/all?query=파워업 독해유형"},
+            {"책": "어휘끝 고교기본", "설명": "기초 단어 암기.", "링크": "https://search.shopping.naver.com/search/all?query=어휘끝 고교기본"}
+        ]
     },
     "수학": {
-        "상위권": {
-            "루트": "개념원리 심화 → 블랙라벨 → 수능 기출 N제 → 실전 모의고사",
-            "설명": "상위권 학생들은 고난도 문제를 대비해야 하므로 심화문제집과 기출문제를 반복."
-        },
-        "중위권": {
-            "루트": "개념원리 → 자이스토리 → 마더텅 기출문제집",
-            "설명": "중위권 학생들은 개념을 다지고 기출을 통해 문제 접근 방식을 학습."
-        }
+        "상": [
+            {"책": "정석", "설명": "기본 개념 심화 후 응용.", "링크": "https://search.shopping.naver.com/search/all?query=정석"},
+            {"책": "쎈", "설명": "상위권 유형별 연습.", "링크": "https://search.shopping.naver.com/search/all?query=쎈"},
+            {"책": "블랙라벨", "설명": "킬러 문제 집중.", "링크": "https://search.shopping.naver.com/search/all?query=블랙라벨"}
+        ],
+        "중": [
+            {"책": "개념원리", "설명": "기본 개념+유형 연습.", "링크": "https://search.shopping.naver.com/search/all?query=개념원리"},
+            {"책": "자이스토리", "설명": "중위권 기출 집중.", "링크": "https://search.shopping.naver.com/search/all?query=자이스토리"},
+            {"책": "마더텅 수학", "설명": "내신+기출 병행.", "링크": "https://search.shopping.naver.com/search/all?query=마더텅 수학"}
+        ],
+        "하": [
+            {"책": "스타트업", "설명": "기초 개념 다지기.", "링크": "https://search.shopping.naver.com/search/all?query=스타트업"},
+            {"책": "RPM", "설명": "쉬운 문제 반복.", "링크": "https://search.shopping.naver.com/search/all?query=RPM"},
+            {"책": "체크체크", "설명": "기초 연습 강화.", "링크": "https://search.shopping.naver.com/search/all?query=체크체크"}
+        ]
     },
     "과탐": {
-        "물리학": [
-            {"책": "자이스토리 물리학1", "설명": "기출문제를 통한 개념 정리와 실전 훈련 가능", "링크": "https://search.shopping.naver.com/search/all?query=자이스토리 물리학1"},
-            {"책": "EBS 수능특강 물리학1", "설명": "EBS 연계 대비 필수 교재", "링크": "https://search.shopping.naver.com/search/all?query=EBS 수능특강 물리학1"},
-            {"책": "블랙라벨 물리학1", "설명": "고난도 문제 풀이를 통한 상위권 대비 교재", "링크": "https://search.shopping.naver.com/search/all?query=블랙라벨 물리학1"}
-        ],
-        "화학": [
-            {"책": "마더텅 화학1", "설명": "내신과 수능 기출 동시 대비", "링크": "https://search.shopping.naver.com/search/all?query=마더텅 화학1"},
-            {"책": "자이스토리 화학1", "설명": "실전 기출 훈련 가능", "링크": "https://search.shopping.naver.com/search/all?query=자이스토리 화학1"},
-            {"책": "완자 화학1", "설명": "체계적인 개념 학습과 문제 적용", "링크": "https://search.shopping.naver.com/search/all?query=완자 화학1"}
-        ],
-        "생명과학": [
-            {"책": "자이스토리 생명과학1", "설명": "개념 + 기출문제 풀이 가능", "링크": "https://search.shopping.naver.com/search/all?query=자이스토리 생명과학1"},
-            {"책": "EBS 수능특강 생명과학1", "설명": "EBS 연계 교재", "링크": "https://search.shopping.naver.com/search/all?query=EBS 수능특강 생명과학1"},
-            {"책": "블랙라벨 생명과학1", "설명": "심화 문제풀이에 특화된 고난도 교재", "링크": "https://search.shopping.naver.com/search/all?query=블랙라벨 생명과학1"}
-        ],
-        "지구과학": [
-            {"책": "자이스토리 지구과학1", "설명": "방대한 기출문제를 통한 완벽 대비", "링크": "https://search.shopping.naver.com/search/all?query=자이스토리 지구과학1"},
-            {"책": "EBS 수능특강 지구과학1", "설명": "EBS 연계 필수 교재", "링크": "https://search.shopping.naver.com/search/all?query=EBS 수능특강 지구과학1"},
-            {"책": "마더텅 지구과학1", "설명": "내신 및 수능 기출 기반 교재", "링크": "https://search.shopping.naver.com/search/all?query=마더텅 지구과학1"}
-        ]
+        "상": {
+            "물리학": [
+                {"책": "블랙라벨 물리1", "설명": "최상위 심화 대비.", "링크": "https://search.shopping.naver.com/search/all?query=블랙라벨 물리1"},
+                {"책": "자이스토리 물리1", "설명": "기출+심화 연습.", "링크": "https://search.shopping.naver.com/search/all?query=자이스토리 물리1"},
+                {"책": "마더텅 물리1", "설명": "기출 연습 풍부.", "링크": "https://search.shopping.naver.com/search/all?query=마더텅 물리1"}
+            ],
+            "화학": [
+                {"책": "블랙라벨 화학1", "설명": "고난도 심화 대비.", "링크": "https://search.shopping.naver.com/search/all?query=블랙라벨 화학1"},
+                {"책": "자이스토리 화학1", "설명": "기출 문제 체계 정리.", "링크": "https://search.shopping.naver.com/search/all?query=자이스토리 화학1"},
+                {"책": "EBS 화학1", "설명": "연계 대비 필수.", "링크": "https://search.shopping.naver.com/search/all?query=EBS 화학1"}
+            ],
+            "생명과학": [
+                {"책": "블랙라벨 생명1", "설명": "최상위 심화 대비.", "링크": "https://search.shopping.naver.com/search/all?query=블랙라벨 생명1"},
+                {"책": "자이스토리 생명1", "설명": "출제 패턴 분석.", "링크": "https://search.shopping.naver.com/search/all?query=자이스토리 생명1"},
+                {"책": "EBS 생명1", "설명": "연계 대비.", "링크": "https://search.shopping.naver.com/search/all?query=EBS 생명1"}
+            ],
+            "지구과학": [
+                {"책": "블랙라벨 지구1", "설명": "킬러 대비 심화.", "링크": "https://search.shopping.naver.com/search/all?query=블랙라벨 지구1"},
+                {"책": "자이스토리 지구1", "설명": "출제 경향 정리.", "링크": "https://search.shopping.naver.com/search/all?query=자이스토리 지구1"},
+                {"책": "EBS 지구1", "설명": "연계 대비.", "링크": "https://search.shopping.naver.com/search/all?query=EBS 지구1"}
+            ]
+        },
+        "중": {
+            "물리학": [
+                {"책": "자이스토리 물리1", "설명": "기출 위주 학습.", "링크": "https://search.shopping.naver.com/search/all?query=자이스토리 물리1"},
+                {"책": "EBS 물리1", "설명": "연계 교재 활용.", "링크": "https://search.shopping.naver.com/search/all?query=EBS 물리1"},
+                {"책": "마더텅 물리1", "설명": "기본+문제풀이 병행.", "링크": "https://search.shopping.naver.com/search/all?query=마더텅 물리1"}
+            ],
+            "화학": [
+                {"책": "자이스토리 화학1", "설명": "기출 중심 반복.", "링크": "https://search.shopping.naver.com/search/all?query=자이스토리 화학1"},
+                {"책": "EBS 화학1", "설명": "연계 대비.", "링크": "https://search.shopping.naver.com/search/all?query=EBS 화학1"},
+                {"책": "마더텅 화학1", "설명": "문제 연습 병행.", "링크": "https://search.shopping.naver.com/search/all?query=마더텅 화학1"}
+            ],
+            "생명과학": [
+                {"책": "자이스토리 생명1", "설명": "대표 기출 패턴 학습.", "링크": "https://search.shopping.naver.com/search/all?query=자이스토리 생명1"},
+                {"책": "EBS 생명1", "설명": "연계 대비.", "링크": "https://search.shopping.naver.com/search/all?query=EBS 생명1"},
+                {"책": "마더텅 생명1", "설명": "기출+기본 반복 학습.", "링크": "https://search.shopping.naver.com/search/all?query=마더텅 생명1"}
+            ],
+            "지구과학": [
+                {"책": "자이스토리 지구1", "설명": "대표 기출 학습.", "링크": "https://search.shopping.naver.com/search/all?query=자이스토리 지구1"},
+                {"책": "EBS 지구1", "설명": "연계 대비.", "링크": "https://search.shopping.naver.com/search/all?query=EBS 지구1"},
+                {"책": "마더텅 지구1", "설명": "기출+기본 문제 반복.", "링크": "https://search.shopping.naver.com/search/all?query=마더텅 지구1"}
+            ]
+        },
+        "하": {
+            "물리학": [
+                {"책": "EBS 물리1 기초", "설명": "기초 개념 정리.", "링크": "https://search.shopping.naver.com/search/all?query=EBS 물리1 기초"},
+                {"책": "천일문 물리", "설명": "쉬운 문제 반복.", "링크": "https://search.shopping.naver.com/search/all?query=천일문 물리"},
+                {"책": "체크체크 물리", "설명": "기본 문제 강화.", "링크": "https://search.shopping.naver.com/search/all?query=체크체크 물리"}
+            ],
+            "화학": [
+                {"책": "EBS 화학1 기초", "설명": "기초 개념 정리.", "링크": "https://search.shopping.naver.com/search/all?query=EBS 화학1 기초"},
+                {"책": "천일문 화학", "설명": "쉬운 문제 반복.", "링크": "https://search.shopping.naver.com/search/all?query=천일문 화학"},
+                {"책": "체크체크 화학", "설명": "기본 문제 강화.", "링크": "https://search.shopping.naver.com/search/all?query=체크체크 화학"}
+            ],
+            "생명과학": [
+                {"책": "EBS 생명1 기초", "설명": "기초 개념 정리.", "링크": "https://search.shopping.naver.com/search/all?query=EBS 생명1 기초"},
+                {"책": "천일문 생명", "설명": "쉬운 문제 반복.", "링크": "https://search.shopping.naver.com/search/all?query=천일문 생명"},
+                {"책": "체크체크 생명", "설명": "기본 문제 강화.", "링크": "https://search.shopping.naver.com/search/all?query=체크체크 생명"}
+            ],
+            "지구과학": [
+                {"책": "EBS 지구1 기초", "설명": "기초 개념 정리.", "링크": "https://search.shopping.naver.com/search/all?query=EBS 지구1 기초"},
+                {"책": "천일문 지구", "설명": "쉬운 문제 반복.", "링크": "https://search.shopping.naver.com/search/all?query=천일문 지구"},
+                {"책": "체크체크 지구", "설명": "기본 문제 강화.", "링크": "https://search.shopping.naver.com/search/all?query=체크체크 지구"}
+            ]
+        }
     }
 }
 
 # ===============================
-# 카드 출력 함수 (구매 링크 버튼 추가)
+# 카드 출력 함수
 # ===============================
 def show_cards(items):
     for item in items:
@@ -138,30 +194,15 @@ def show_cards(items):
 # ===============================
 # UI
 # ===============================
-st.title("🌈 고2 과목&수준별 문제집 추천 🌈")
+st.title("🌈 고2 과목&등급별 문제집 추천 🌈")
 
 subject = st.selectbox("과목을 선택하세요", list(data.keys()))
+level = st.selectbox("등급을 선택하세요", ["상", "중", "하"])
 
-if subject == "국어":
-    category = st.selectbox("국어 분야를 선택하세요", ["문학"])
-    st.subheader(f"{subject} - {category} 추천 문제집")
-    show_cards(data[subject][category])
-    if st.button("학습 루트 보기"):
-        st.success(f"📌 학습 루트: {data[subject]['학습루트']}\n\n💡 루트 이유: {data[subject]['루트이유']}")
-
-elif subject == "영어":
-    grade = st.selectbox("영어 등급을 선택하세요", list(data[subject].keys()))
-    st.subheader(f"{subject} {grade} 추천 문제집")
-    show_cards(data[subject][grade]["문제집"])
-    if st.button("학습 루트 보기"):
-        st.success(f"📌 학습 루트: {data[subject][grade]['학습루트']}\n\n💡 루트 이유: {data[subject][grade]['루트이유']}")
-
-elif subject == "수학":
-    grade = st.selectbox("수학 수준을 선택하세요", list(data[subject].keys()))
-    st.subheader(f"{subject} {grade} 학습 루트")
-    st.success(f"📌 루트: {data[subject][grade]['루트']}\n\n💡 설명: {data[subject][grade]['설명']}")
-
+if subject in ["국어", "영어", "수학"]:
+    st.subheader(f"{subject} {level} 추천 문제집")
+    show_cards(data[subject][level])
 elif subject == "과탐":
-    category = st.selectbox("과탐 과목을 선택하세요", list(data[subject].keys()))
-    st.subheader(f"{subject} - {category} 추천 문제집")
-    show_cards(data[subject][category])
+    category = st.selectbox("과탐 과목을 선택하세요", list(data[subject][level].keys()))
+    st.subheader(f"{level} - {category} 추천 문제집")
+    show_cards(data[subject][level][category])
