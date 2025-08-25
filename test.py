@@ -54,18 +54,18 @@ st.markdown(
 )
 
 # ===============================
-# 데이터 정의 (문제집 + 학습 루트)
+# 데이터 정의 (모든 과목/등급)
 # ===============================
 data = {
     "국어": {
         "1~2등급": {
             "문제집":[
-                {"책":"매삼문","설명":"평가원 기출 기반, 상위권 문제풀이 적합.","링크":"https://search.shopping.naver.com/search/all?query=매삼문"},
+                {"책":"매삼문","설명":"상위권 평가원 기출 기반, 빠르게 문제 풀이.","링크":"https://search.shopping.naver.com/search/all?query=매삼문"},
                 {"책":"마더텅 국어 문학","설명":"독학 최적화, 해설 충실.","링크":"https://search.shopping.naver.com/search/all?query=마더텅+국어+문학"},
                 {"책":"빠작 고전문학","설명":"핵심 고전문학 체계적 정리.","링크":"https://search.shopping.naver.com/search/all?query=빠작+고전+문학"}
             ],
             "루트":"문학 기초 → 기출문제 풀이 → 심화 작품 분석 → 모의고사 실전 연습",
-            "루트이유":"기초부터 시작해 난이도를 점진적으로 높이며 문학 감각과 문제 해결력을 동시에 향상시킬 수 있습니다."
+            "루트이유":"기초부터 난이도를 점진적으로 높이며 문학 감각과 문제 해결력을 동시에 향상."
         },
         "3~4등급": {
             "문제집":[
@@ -164,7 +164,63 @@ data = {
             "루트":"기초 개념 → 유형별 문제 풀이 → 기출 심화 → 실전 문제 풀이",
             "루트이유":"기초부터 실전까지 단계별 학습으로 실력 향상."
         },
-        # 화학, 생명, 지구도 동일 구조로 1~2/3~4/5등급 추가 가능
+        "화학": {
+            "1~2등급":[
+                {"책":"완자 화학1","설명":"상위권 심화 문제 대비","링크":"https://search.shopping.naver.com/search/all?query=완자+화학1"},
+                {"책":"하이탑 화학1","설명":"상위권 개념+문제 집중","링크":"https://search.shopping.naver.com/search/all?query=하이탑+화학1"},
+                {"책":"EBS 개념완성 화학1","설명":"내신+수능 대비","링크":"https://search.shopping.naver.com/search/all?query=EBS+개념완성+화학1"}
+            ],
+            "3~4등급":[
+                {"책":"완자 화학1 기본","설명":"중위권 개념+문제풀이","링크":"https://search.shopping.naver.com/search/all?query=완자+화학1+기본"},
+                {"책":"오투 화학1","설명":"중급 난이도 문제","링크":"https://search.shopping.naver.com/search/all?query=오투+화학1"},
+                {"책":"하이탑 화학1 기본","설명":"개념 이해 중심","링크":"https://search.shopping.naver.com/search/all?query=하이탑+화학1+기본"}
+            ],
+            "5등급 이하":[
+                {"책":"화학 기초","설명":"개념 이해 및 문제풀이","링크":"https://search.shopping.naver.com/search/all?query=화학+기초"},
+                {"책":"쉬운 화학 문제","설명":"문제 반복","링크":"https://search.shopping.naver.com/search/all?query=쉬운+화학+문제"},
+                {"책":"화학 기본서","설명":"자습용","링크":"https://search.shopping.naver.com/search/all?query=화학+기본서"}
+            ],
+            "루트":"기초 개념 → 문제풀이 → 심화 연습 → 실전 대비",
+            "루트이유":"기초부터 실전까지 단계별 학습으로 이해도 향상."
+        },
+        "생명": {
+            "1~2등급":[
+                {"책":"완자 생명과학","설명":"상위권 심화 문제 대비","링크":"https://search.shopping.naver.com/search/all?query=완자+생명과학"},
+                {"책":"하이탑 생명과학","설명":"심화 개념+문제","링크":"https://search.shopping.naver.com/search/all?query=하이탑+생명과학"},
+                {"책":"오투 생명과학","설명":"기출 대비","링크":"https://search.shopping.naver.com/search/all?query=오투+생명과학"}
+            ],
+            "3~4등급":[
+                {"책":"완자 생명과학 기본","설명":"중위권 개념+문제풀이","링크":"https://search.shopping.naver.com/search/all?query=완자+생명과학+기본"},
+                {"책":"하이탑 생명과학 기초","설명":"개념 이해 중심","링크":"https://search.shopping.naver.com/search/all?query=하이탑+생명과학+기초"},
+                {"책":"오투 생명과학 기초","설명":"문제 풀이 반복","링크":"https://search.shopping.naver.com/search/all?query=오투+생명과학+기초"}
+            ],
+            "5등급 이하":[
+                {"책":"생명과학 기초","설명":"개념+문제 반복 학습","링크":"https://search.shopping.naver.com/search/all?query=생명과학+기초"},
+                {"책":"쉬운 생명 문제","설명":"반복 학습","링크":"https://search.shopping.naver.com/search/all?query=쉬운+생명+문제"},
+                {"책":"생명과학 기본서","설명":"자습용","링크":"https://search.shopping.naver.com/search/all?query=생명과학+기본서"}
+            ],
+            "루트":"기초 개념 → 문제풀이 반복 → 심화 문제 → 실전 대비",
+            "루트이유":"기초부터 실전까지 단계별 학습으로 이해도 향상."
+        },
+        "지구": {
+            "1~2등급":[
+                {"책":"완자 지구과학1","설명":"상위권 심화 문제 대비","링크":"https://search.shopping.naver.com/search/all?query=완자+지구과학1"},
+                {"책":"하이탑 지구과학1","설명":"상위권 개념+문제","링크":"https://search.shopping.naver.com/search/all?query=하이탑+지구과학1"},
+                {"책":"뉴올리드 지구과학1","설명":"체계적 개념 정리","링크":"https://search.shopping.naver.com/search/all?query=뉴올리드+지구과학1"}
+            ],
+            "3~4등급":[
+                {"책":"완자 지구과학1 기본","설명":"중위권 학습 적합","링크":"https://search.shopping.naver.com/search/all?query=완자+지구과학1+기본"},
+                {"책":"하이탑 지구과학1 기초","설명":"기초 개념 정리","링크":"https://search.shopping.naver.com/search/all?query=하이탑+지구과학1+기초"},
+                {"책":"투플러스 지구과학1","설명":"문제 풀이 반복","링크":"https://search.shopping.naver.com/search/all?query=투플러스+지구과학1"}
+            ],
+            "5등급 이하":[
+                {"책":"지구과학 기초","설명":"기본 개념+쉬운 문제","링크":"https://search.shopping.naver.com/search/all?query=지구과학+기초"},
+                {"책":"쉬운 지구 문제","설명":"반복 학습","링크":"https://search.shopping.naver.com/search/all?query=쉬운+지구+문제"},
+                {"책":"지구과학 기본서","설명":"자습용","링크":"https://search.shopping.naver.com/search/all?query=지구과학+기본서"}
+            ],
+            "루트":"기초 개념 → 문제풀이 → 심화 문제 → 실전 대비",
+            "루트이유":"기초부터 실전까지 단계별 학습으로 이해도 향상."
+        }
     }
 }
 
@@ -188,7 +244,6 @@ st.title("🌈 고2 과목&등급별 문제집 추천 🌈")
 
 subject = st.selectbox("과목 선택", list(data.keys()))
 
-# 과탐이면 분야 선택
 if subject == "과탐":
     field = st.selectbox("과탐 분야 선택", list(data[subject].keys()))
     grade = st.selectbox("등급 선택", ["1~2등급", "3~4등급", "5등급 이하"])
